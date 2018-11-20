@@ -34,7 +34,7 @@ where a.table_name=b.table_name;
       
 BEGIN
   FOR ind IN 
-    (SELECT index_name FROM user_indexes WHERE table_name = 'my_table' AND index_name NOT IN 
+    (SELECT index_name FROM user_indexes WHERE table_name = :TableName AND index_name NOT IN 
        (SELECT unique index_name FROM user_constraints WHERE 
           table_name = :TableName  AND index_name IS NOT NULL))
   LOOP

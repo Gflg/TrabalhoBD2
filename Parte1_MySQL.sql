@@ -30,7 +30,9 @@ ALTER TABLE album ADD INDEX IFK_AlbumArtistId(ArtistId);
 USE chinook;
 
 /* Para uso da questão 4 */
+CREATE DATABASE dev;
 USE dev;
+DROP DATABASE dev;
 
 SELECT TABLE_NAME, INDEX_NAME, COLUMN_NAME
 FROM INFORMATION_SCHEMA.STATISTICS
@@ -101,7 +103,12 @@ BEGIN
 	DECLARE tipo_chave VARCHAR(150);
 	DECLARE anterior VARCHAR(150);
 	DECLARE chaveprimaria VARCHAR(150);
-
+    DECLARE fkColumn VARCHAR(150);
+    DECLARE fkConstraintName VARCHAR(150);
+	DECLARE fkReferencedTable VARCHAR(150);
+    DECLARE fkReferencedColumn VARCHAR(150);
+    DECLARE fkTable VARCHAR(150);
+    
 	DECLARE registro CURSOR FOR 
 		SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_KEY
 		FROM INFORMATION_SCHEMA.COLUMNS
@@ -155,8 +162,18 @@ BEGIN
 		end IF;  
 	end LOOP; 
   close registro;
-	
-  SELECT table_name FROM information_schema.tables where table_schema='chinook';
+  
+  SET @alterTable = "ALTER TABLE ";
+  SET createIndex = "CREATE INDEX";
+  
+  open registroFK;
+    FK_LOOP:
+	LOOP
+    FETCH registroFK INTO fkTable,fkColumn,fkConstraintName,fkReferencedTable,fkTable;
+    
+	END LOOP;
+
+  SELECT table_name FROM information_schema.tables where table_schema='dev';
 
 END$$
 

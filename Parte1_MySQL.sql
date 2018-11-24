@@ -87,13 +87,12 @@ WHERE
    TODO: descobrir como recuperar ações em cima de FK
    TODO: descobrir tam dos varchar
 ********************************************************************************/
-USE dev;
-
 DROP PROCEDURE IF EXISTS parent_reg;
 
 DELIMITER $$
 
 CREATE PROCEDURE parent_reg()
+
 BEGIN
 	DECLARE fim INT DEFAULT false;
 	DECLARE tableName VARCHAR(150); 
@@ -103,26 +102,16 @@ BEGIN
 	DECLARE tipo_chave VARCHAR(150);
 	DECLARE anterior VARCHAR(150);
 	DECLARE chaveprimaria VARCHAR(150);
-    DECLARE fkColumn VARCHAR(150);
-    DECLARE fkConstraintName VARCHAR(150);
-	DECLARE fkReferencedTable VARCHAR(150);
-    DECLARE fkReferencedColumn VARCHAR(150);
-    DECLARE fkTable VARCHAR(150);
     
 	DECLARE registro CURSOR FOR 
 		SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_KEY
 		FROM INFORMATION_SCHEMA.COLUMNS
 		WHERE TABLE_SCHEMA = 'chinook';
-    
-	DECLARE registroFK CURSOR FOR
-		SELECT TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME,REFERENCED_COLUMN_NAME
-		FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-		WHERE REFERENCED_TABLE_SCHEMA = 'chinook';
-
+	
 	DECLARE CONTINUE handler 
 	  FOR NOT found 
-		SET fim = TRUE; 
-	
+			SET fim = TRUE;
+            
     SET anterior = "vazio";
 	SET @createTable = "CREATE TABLE ";
     SET chaveprimaria = "CONSTRAINT `PK_";
@@ -131,7 +120,7 @@ BEGIN
 	READ_LOOP:
 		LOOP
 			FETCH registro INTO tableName,coluna,tipo,obrigatorio,tipo_chave;
-			SET tableName = CONCAT(tableName,123);
+			-- SET tableName = CONCAT(tableName,123);
 			IF tableName <> anterior AND anterior NOT LIKE "vazio" THEN
 				SET @createTable = CONCAT(@createTable, ", ", chaveprimaria, "))");
 				PREPARE createStmt FROM @createTable;
@@ -161,21 +150,58 @@ BEGIN
 			LEAVE read_loop; 
 			end IF;  
 		end LOOP; 
-  close registro;
-  
-  SET @alterTable = "ALTER TABLE ";
-  SET createIndex = "CREATE INDEX";
-  
-  open registroFK;
+	close registro;
+    
+BLOCK2: BEGIN
+    
+    DECLARE fim2 INT DEFAULT false;
+    DECLARE fkColumn VARCHAR(150);
+    DECLARE fkConstraintName VARCHAR(150);
+	DECLARE fkReferencedTable VARCHAR(150);
+    DECLARE fkReferencedColumn VARCHAR(150);
+    DECLARE fkTable VARCHAR(150);
+    
+    DECLARE registroFK CURSOR FOR
+		SELECT TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME,REFERENCED_COLUMN_NAME
+		FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+		WHERE REFERENCED_TABLE_SCHEMA = 'chinook';
+
+	DECLARE CONTINUE handler 
+	  FOR NOT found 
+			SET fim2 = TRUE;
+            
+	 
+	 
+	SET @alterTable = "ALTER TABLE ";
+	SET @createIndex = "CREATE INDEX ";
+	  
+	open registroFK;
     FK_LOOP:
 		LOOP
-			FETCH registroFK INTO fkTable,fkColumn,fkConstraintName,fkReferencedTable,fkTable;
-			
+			FETCH registroFK INTO fkTable,fkColumn,fkConstraintName,fkReferencedTable,fkReferencedColumn;
+			-- SET fkTable = CONCAT(fkTable,123);
+            SET @alterTable = CONCAT(@alterTable,"`", fkTable,"` ADD CONSTRAINT `",fkConstraintName,"`");
+            SET @alterTable = CONCAT(@alterTable, " FOREIGN KEY (`", fkColumn,"`) REFERENCES `",fkReferencedTable,"` (`");
+            SET @alterTable = CONCAT(@alterTable, fkReferencedColumn,"`) ");
+            SET @alterTable = CONCAT(@alterTable, "ON DELETE NO ACTION ON UPDATE NO ACTION;\n");
+            -- SET @createIndex = CONCAT(@createIndex, "`I",fkConstraintName,"` ON `", fkTable,"` (`",fkColumn,"`);");
+           -- SET @alterTable = CONCAT(@alterTable, @createIndex);
+            PREPARE createStmt FROM @alterTable;
+				EXECUTE createStmt;
+				DEALLOCATE PREPARE createStmt;
+				SET @alterTable = "ALTER TABLE ";
+				SET @createIndex = "CREATE INDEX ";
+			IF fim2 THEN 
+			LEAVE FK_LOOP; 
+			end IF;
 		END LOOP;
-
-  SELECT table_name FROM information_schema.tables where table_schema='dev';
-
+	close registroFK;
+    
+	SELECT table_name FROM information_schema.tables where table_schema='dev';
+	
+END BLOCK2;
 END$$
+
 
 DELIMITER ;
 

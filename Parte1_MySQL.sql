@@ -96,6 +96,7 @@ DELIMITER $$
 CREATE PROCEDURE parent_reg()
 BEGIN
 	DECLARE fim INT DEFAULT false;
+    DECLARE fim_fk INT DEFAULT false;
 	DECLARE tableName VARCHAR(150); 
 	DECLARE coluna VARCHAR(150); 
 	DECLARE tipo VARCHAR(150);
@@ -121,7 +122,12 @@ BEGIN
 
 	DECLARE CONTINUE handler 
 	  FOR NOT found 
-		SET fim = TRUE; 
+		BEGIN
+			IF fim LIKE TRUE THEN
+				SET fim_fk = TRUE;
+			END IF;
+            SET fim = TRUE;
+        END;
 	
     SET anterior = "vazio";
 	SET @createTable = "CREATE TABLE ";
@@ -131,7 +137,7 @@ BEGIN
 	READ_LOOP:
 		LOOP
 			FETCH registro INTO tableName,coluna,tipo,obrigatorio,tipo_chave;
-			SET tableName = CONCAT(tableName,123);
+			SET tableName = CONCAT(tableName," ");
 			IF tableName <> anterior AND anterior NOT LIKE "vazio" THEN
 				SET @createTable = CONCAT(@createTable, ", ", chaveprimaria, "))");
 				PREPARE createStmt FROM @createTable;
@@ -164,14 +170,31 @@ BEGIN
   close registro;
   
   SET @alterTable = "ALTER TABLE ";
-  SET createIndex = "CREATE INDEX";
-  
+  SET @createIndex = "CREATE INDEX ";
+ 
   open registroFK;
     FK_LOOP:
-		LOOP
-			FETCH registroFK INTO fkTable,fkColumn,fkConstraintName,fkReferencedTable,fkTable;
-			
-		END LOOP;
+        LOOP
+            FETCH registroFK INTO fkTable,fkColumn,fkConstraintName,fkReferencedTable,fkReferencedColumn;
+            -- SET fkTable = CONCAT(fkTable,123);
+            SET @alterTable = CONCAT(@alterTable,"`", fkTable,"` ADD CONSTRAINT `",fkConstraintName,"`");
+            SET @alterTable = CONCAT(@alterTable, " FOREIGN KEY (`", fkColumn,"`) REFERENCES `",fkReferencedTable,"` (`");
+            SET @alterTable = CONCAT(@alterTable, fkReferencedColumn,"`) ");
+            SET @alterTable = CONCAT(@alterTable, "ON DELETE NO ACTION ON UPDATE NO ACTION;\n");
+            -- SET @createIndex = CONCAT(@createIndex, "`I",fkConstraintName,"` ON `", fkTable,"` (`",fkColumn,"`);");
+            -- SET @alterTable = CONCAT(@alterTable, @createIndex);
+            select @alterTable;
+            select @createIndex;
+            PREPARE createStmt FROM @alterTable;
+                EXECUTE createStmt;
+                DEALLOCATE PREPARE createStmt;
+                SET @alterTable = "ALTER TABLE ";
+                SET @createIndex = "CREATE INDEX ";
+            IF fim_fk THEN 
+            LEAVE FK_LOOP; 
+            end IF;
+        END LOOP;
+    close registroFK;
 
   SELECT table_name FROM information_schema.tables where table_schema='dev';
 
@@ -180,3 +203,7 @@ END$$
 DELIMITER ;
 
 CALL parent_reg();
+
+DROP DATABASE dev;
+CREATE DATABASE dev;
+USE dev;

@@ -112,7 +112,6 @@ BEGIN
         SET produto = CONCAT(produto,123);
         IF produto <> anterior AND anterior NOT LIKE "vazio" THEN
 			SET @createTable = CONCAT(@createTable, ", ", chaveprimaria, "))");
-			SELECT @createTable;
 			PREPARE createStmt FROM @createTable;
 			EXECUTE createStmt;
 			DEALLOCATE PREPARE createStmt;

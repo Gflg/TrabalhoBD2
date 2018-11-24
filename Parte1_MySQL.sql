@@ -73,14 +73,11 @@ WHERE
   REFERENCED_TABLE_SCHEMA = 'chinook';
 
 /*******************************************************************************
-   4. Está pegando, no primeiro SELECT, o nome da tabela, cada coluna da tabela, tipo da coluna, 
-      obrigatoriedade, e se é chave primária (PRI), estrangeira(MUL) ou nada.
-      Falta fazer o CREATE TABLE no mesmo estilo que fiz com o nome da tabela (produto) e
-      criar as chaves primárias e estrangeiras na mão. Só usar todas essas informações dadas
-      no primeiro SELECT.
+   4. Falta só a chave estrangeira.
 ********************************************************************************/
 
 DROP PROCEDURE IF EXISTS parent_reg;
+
 
 DELIMITER $$
 
@@ -93,6 +90,7 @@ BEGIN
   DECLARE obrigatorio VARCHAR(150);
   DECLARE tipo_chave VARCHAR(150);
   DECLARE anterior VARCHAR(150);
+  DECLARE chaveprimaria VARCHAR(150);
 
   DECLARE bloco CURSOR FOR 
     SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_KEY
@@ -104,18 +102,40 @@ BEGIN
 		SET fim = TRUE; 
 	
     SET anterior = "vazio";
+	SET @createTable = "CREATE TABLE ";
+    SET chaveprimaria = "CONSTRAINT `PK_";
+
   open bloco; 
 	READ_LOOP:
     LOOP
 		FETCH bloco INTO produto,coluna,tipo,obrigatorio,tipo_chave;
         SET produto = CONCAT(produto,123);
-        IF produto <> anterior THEN
-			SET anterior = produto;
-			SET @createTable = CONCAT("CREATE TABLE ", produto, "(descricao VARCHAR(150), coluna VARCHAR(150), tipo VARCHAR(150), obrigatorio VARCHAR(150), tipo_chave varchar(55))");
+        IF produto <> anterior AND anterior NOT LIKE "vazio" THEN
+			SET @createTable = CONCAT(@createTable, ", ", chaveprimaria, "))");
+			SELECT @createTable;
 			PREPARE createStmt FROM @createTable;
 			EXECUTE createStmt;
 			DEALLOCATE PREPARE createStmt;
+			SET @createTable = "CREATE TABLE ";
+            SET chaveprimaria = "CONSTRAINT `PK_";
 		END IF;
+        SET anterior = produto;
+        IF @createTable LIKE "CREATE TABLE " THEN
+			SET @createTable = CONCAT(@createTable, produto, " (");
+		ELSE SET @createTable = CONCAT(@createTable, ", ");
+        END IF;
+		SET @createTable = CONCAT(@createTable, coluna, " ", tipo);
+        IF tipo LIKE "VARCHAR" THEN
+			SET @createTable = CONCAT(@createTable, "(150)");
+		END IF;
+        IF obrigatorio LIKE "YES" THEN
+			SET @createTable = CONCAT(@createTable, " NOT NULL");
+        END IF;
+        IF tipo_chave LIKE "PRI" AND chaveprimaria LIKE "CONSTRAINT `PK_" THEN
+			SET chaveprimaria = CONCAT(chaveprimaria, produto, "` PRIMARY KEY  (`", coluna, "`"); 
+		ELSEIF tipo_chave LIKE "PRI" THEN
+			SET chaveprimaria = CONCAT(chaveprimaria, ", `", coluna, "`");
+        END IF;
 		IF fim THEN 
 		  LEAVE read_loop; 
 		end IF;  

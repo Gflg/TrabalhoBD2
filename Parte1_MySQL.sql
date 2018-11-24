@@ -27,6 +27,14 @@ GROUP BY `Table`;
 
 ALTER TABLE album ADD INDEX IFK_AlbumArtistId(ArtistId);
 
+USE chinook;
+
+/* Para uso da questão 4 */
+USE dev;
+
+SELECT TABLE_NAME, INDEX_NAME, COLUMN_NAME
+FROM INFORMATION_SCHEMA.STATISTICS
+WHERE TABLE_SCHEMA = 'dev';
 
 /*******************************************************************************
    1. Consulta as tabelas de catálogo e lista todos os índices existentes acompanhados
@@ -74,28 +82,35 @@ WHERE
 
 /*******************************************************************************
    4. Falta só a chave estrangeira.
+   TODO: descobrir como recuperar ações em cima de FK
+   TODO: descobrir tam dos varchar
 ********************************************************************************/
+USE dev;
 
 DROP PROCEDURE IF EXISTS parent_reg;
-
 
 DELIMITER $$
 
 CREATE PROCEDURE parent_reg()
 BEGIN
-  DECLARE fim INT DEFAULT false;
-  DECLARE produto VARCHAR(150); 
-  DECLARE coluna VARCHAR(150); 
-  DECLARE tipo VARCHAR(150);
-  DECLARE obrigatorio VARCHAR(150);
-  DECLARE tipo_chave VARCHAR(150);
-  DECLARE anterior VARCHAR(150);
-  DECLARE chaveprimaria VARCHAR(150);
+	DECLARE fim INT DEFAULT false;
+	DECLARE tableName VARCHAR(150); 
+	DECLARE coluna VARCHAR(150); 
+	DECLARE tipo VARCHAR(150);
+	DECLARE obrigatorio VARCHAR(150);
+	DECLARE tipo_chave VARCHAR(150);
+	DECLARE anterior VARCHAR(150);
+	DECLARE chaveprimaria VARCHAR(150);
 
-  DECLARE bloco CURSOR FOR 
-    SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_KEY
-	FROM INFORMATION_SCHEMA.COLUMNS
-	WHERE TABLE_SCHEMA = 'chinook';
+	DECLARE registro CURSOR FOR 
+		SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_KEY
+		FROM INFORMATION_SCHEMA.COLUMNS
+		WHERE TABLE_SCHEMA = 'chinook';
+    
+	DECLARE registroFK CURSOR FOR
+		SELECT TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME,REFERENCED_COLUMN_NAME
+		FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+		WHERE REFERENCED_TABLE_SCHEMA = 'chinook';
 
 	DECLARE CONTINUE handler 
 	  FOR NOT found 
@@ -105,23 +120,22 @@ BEGIN
 	SET @createTable = "CREATE TABLE ";
     SET chaveprimaria = "CONSTRAINT `PK_";
 
-  open bloco; 
+  open registro; 
 	READ_LOOP:
     LOOP
-		FETCH bloco INTO produto,coluna,tipo,obrigatorio,tipo_chave;
-        SET produto = CONCAT(produto,123);
-        IF produto <> anterior AND anterior NOT LIKE "vazio" THEN
+		FETCH registro INTO tableName,coluna,tipo,obrigatorio,tipo_chave;
+        SET tableName = CONCAT(tableName,123);
+        IF tableName <> anterior AND anterior NOT LIKE "vazio" THEN
 			SET @createTable = CONCAT(@createTable, ", ", chaveprimaria, "))");
-			SELECT @createTable;
 			PREPARE createStmt FROM @createTable;
 			EXECUTE createStmt;
 			DEALLOCATE PREPARE createStmt;
 			SET @createTable = "CREATE TABLE ";
             SET chaveprimaria = "CONSTRAINT `PK_";
 		END IF;
-        SET anterior = produto;
+        SET anterior = tableName;
         IF @createTable LIKE "CREATE TABLE " THEN
-			SET @createTable = CONCAT(@createTable, produto, " (");
+			SET @createTable = CONCAT(@createTable, tableName, " (");
 		ELSE SET @createTable = CONCAT(@createTable, ", ");
         END IF;
 		SET @createTable = CONCAT(@createTable, coluna, " ", tipo);
@@ -132,7 +146,7 @@ BEGIN
 			SET @createTable = CONCAT(@createTable, " NOT NULL");
         END IF;
         IF tipo_chave LIKE "PRI" AND chaveprimaria LIKE "CONSTRAINT `PK_" THEN
-			SET chaveprimaria = CONCAT(chaveprimaria, produto, "` PRIMARY KEY  (`", coluna, "`"); 
+			SET chaveprimaria = CONCAT(chaveprimaria, tableName, "` PRIMARY KEY  (`", coluna, "`"); 
 		ELSEIF tipo_chave LIKE "PRI" THEN
 			SET chaveprimaria = CONCAT(chaveprimaria, ", `", coluna, "`");
         END IF;
@@ -140,7 +154,7 @@ BEGIN
 		  LEAVE read_loop; 
 		end IF;  
 	end LOOP; 
-  close bloco;
+  close registro;
 	
   SELECT table_name FROM information_schema.tables where table_schema='chinook';
 

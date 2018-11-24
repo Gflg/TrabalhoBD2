@@ -87,6 +87,10 @@ WHERE
    TODO: descobrir como recuperar ações em cima de FK
    TODO: descobrir tam dos varchar
 ********************************************************************************/
+DROP DATABASE IF EXISTS dev;
+CREATE DATABASE dev;
+USE dev;
+
 DROP PROCEDURE IF EXISTS parent_reg;
 
 DELIMITER $$
@@ -171,8 +175,6 @@ BLOCK2: BEGIN
 	  FOR NOT found 
 		SET fim2 = TRUE;
             
-	 
-	 
 	SET @alterTable = "ALTER TABLE ";
 	SET @createIndex = "CREATE INDEX ";
 	  
@@ -180,6 +182,9 @@ BLOCK2: BEGIN
     FK_LOOP:
 		LOOP
 			FETCH registroFK INTO fkTable,fkColumn,fkConstraintName,fkReferencedTable,fkReferencedColumn;
+            IF fim2 THEN 
+			LEAVE FK_LOOP; 
+			end IF;
 			-- SET fkTable = CONCAT(fkTable,123);
             SET @alterTable = CONCAT(@alterTable,"`", fkTable,"` ADD CONSTRAINT `",fkConstraintName,"`");
             SET @alterTable = CONCAT(@alterTable, " FOREIGN KEY (`", fkColumn,"`) REFERENCES `",fkReferencedTable,"` (`");
@@ -192,9 +197,7 @@ BLOCK2: BEGIN
 				DEALLOCATE PREPARE createStmt;
 				SET @alterTable = "ALTER TABLE ";
 				SET @createIndex = "CREATE INDEX ";
-			IF fim2 THEN 
-			LEAVE FK_LOOP; 
-			end IF;
+			
 		END LOOP;
 	close registroFK;
     
@@ -207,7 +210,3 @@ END$$
 DELIMITER ;
 
 CALL parent_reg();
-
-DROP DATABASE dev;
-CREATE DATABASE dev;
-USE dev;

@@ -129,38 +129,38 @@ BEGIN
 
   open registro; 
 	READ_LOOP:
-    LOOP
-		FETCH registro INTO tableName,coluna,tipo,obrigatorio,tipo_chave;
-        SET tableName = CONCAT(tableName,123);
-        IF tableName <> anterior AND anterior NOT LIKE "vazio" THEN
-			SET @createTable = CONCAT(@createTable, ", ", chaveprimaria, "))");
-			PREPARE createStmt FROM @createTable;
-			EXECUTE createStmt;
-			DEALLOCATE PREPARE createStmt;
-			SET @createTable = "CREATE TABLE ";
-            SET chaveprimaria = "CONSTRAINT `PK_";
-		END IF;
-        SET anterior = tableName;
-        IF @createTable LIKE "CREATE TABLE " THEN
-			SET @createTable = CONCAT(@createTable, tableName, " (");
-		ELSE SET @createTable = CONCAT(@createTable, ", ");
-        END IF;
-		SET @createTable = CONCAT(@createTable, coluna, " ", tipo);
-        IF tipo LIKE "VARCHAR" THEN
-			SET @createTable = CONCAT(@createTable, "(150)");
-		END IF;
-        IF obrigatorio LIKE "YES" THEN
-			SET @createTable = CONCAT(@createTable, " NOT NULL");
-        END IF;
-        IF tipo_chave LIKE "PRI" AND chaveprimaria LIKE "CONSTRAINT `PK_" THEN
-			SET chaveprimaria = CONCAT(chaveprimaria, tableName, "` PRIMARY KEY  (`", coluna, "`"); 
-		ELSEIF tipo_chave LIKE "PRI" THEN
-			SET chaveprimaria = CONCAT(chaveprimaria, ", `", coluna, "`");
-        END IF;
-		IF fim THEN 
-		  LEAVE read_loop; 
-		end IF;  
-	end LOOP; 
+		LOOP
+			FETCH registro INTO tableName,coluna,tipo,obrigatorio,tipo_chave;
+			SET tableName = CONCAT(tableName,123);
+			IF tableName <> anterior AND anterior NOT LIKE "vazio" THEN
+				SET @createTable = CONCAT(@createTable, ", ", chaveprimaria, "))");
+				PREPARE createStmt FROM @createTable;
+				EXECUTE createStmt;
+				DEALLOCATE PREPARE createStmt;
+				SET @createTable = "CREATE TABLE ";
+				SET chaveprimaria = "CONSTRAINT `PK_";
+			END IF;
+			SET anterior = tableName;
+			IF @createTable LIKE "CREATE TABLE " THEN
+				SET @createTable = CONCAT(@createTable, tableName, " (");
+			ELSE SET @createTable = CONCAT(@createTable, ", ");
+			END IF;
+			SET @createTable = CONCAT(@createTable, coluna, " ", tipo);
+			IF tipo LIKE "VARCHAR" THEN
+				SET @createTable = CONCAT(@createTable, "(150)");
+			END IF;
+			IF obrigatorio LIKE "YES" THEN
+				SET @createTable = CONCAT(@createTable, " NOT NULL");
+			END IF;
+			IF tipo_chave LIKE "PRI" AND chaveprimaria LIKE "CONSTRAINT `PK_" THEN
+				SET chaveprimaria = CONCAT(chaveprimaria, tableName, "` PRIMARY KEY  (`", coluna, "`"); 
+			ELSEIF tipo_chave LIKE "PRI" THEN
+				SET chaveprimaria = CONCAT(chaveprimaria, ", `", coluna, "`");
+			END IF;
+			IF fim THEN 
+			LEAVE read_loop; 
+			end IF;  
+		end LOOP; 
   close registro;
   
   SET @alterTable = "ALTER TABLE ";
@@ -168,10 +168,10 @@ BEGIN
   
   open registroFK;
     FK_LOOP:
-	LOOP
-    FETCH registroFK INTO fkTable,fkColumn,fkConstraintName,fkReferencedTable,fkTable;
-    
-	END LOOP;
+		LOOP
+			FETCH registroFK INTO fkTable,fkColumn,fkConstraintName,fkReferencedTable,fkTable;
+			
+		END LOOP;
 
   SELECT table_name FROM information_schema.tables where table_schema='dev';
 

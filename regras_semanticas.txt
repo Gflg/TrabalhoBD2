@@ -1,0 +1,15 @@
+Nenhum int < 0
+
+Customer:
+	verificar numero de telefone por pais
+	email deve conter '@'
+Employee:
+	BirthDate > 18
+
+MediaType:
+	Create domain: botar alguns tipos 
+Track:
+	se Milliseconds < 30 mili -> unitPrice = 0;
+
+Invoice: total = invoiceline.quantity * unitprice 
+

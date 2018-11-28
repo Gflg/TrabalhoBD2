@@ -1,9 +1,11 @@
+Questão 1 Parte 1
+
 Regra semântica 1:
 	Nenhuma coluna do tipo INT deve permitir inteiros menores que 0 (por exemplo, preço de uma  musica e duração não podem ser negativos).
 Regra semântica 2:
 	Campo email em Employee precisa conter um "@", caso não seja nulo
 Regra semântica 3:
-	Um empregado não pode ter menos de 18 anos e sua idade no começo do emprego também não pode ser menor que 18 anos. (Data atual - BirthDate >= 18 anos e HireDate - BirthDate >= 18 anos)
+	Um empregado não pode ter sido contratado antes de fazer 18 anos (HireDate - BirthDate >= 18 anos)
 Regra semântica 4:
 	O nome de um tipo de mídia, em MediaType, deve pertencer ao domínio ('flac','wav','mp3','ogg','wma','alac')
 Regra semântica 5:
@@ -13,4 +15,4 @@ Regra semântica 6:
 Regra semântica 7:
 	Um usuário tem permissões para criar uma playlist e adicionar músicas a ela. Para isso, ele passa por parâmetro o nome da playlist e um gênero (o gênero deve existir). O sistema escolhe 3 músicas aleatórias do gênero e insere na playlist. Pode repetir o processo para a mesma ou outras playlists e com o mesmo ou outros gêneros.
 
-Regras implementadas: 3 (trigger) e 7 (procedure)
+Regras implementadas: 3, 5 (trigger) e 7 (procedure)

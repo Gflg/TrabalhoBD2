@@ -75,23 +75,40 @@ END$$
 
 DELIMITER ;
 
-INSERT INTO `Employee` (`EmployeeId`, `LastName`, `FirstName`, `Title`, `ReportsTo`, `BirthDate`, `HireDate`, `Address`, `City`, `State`, `Country`, `PostalCode`, `Phone`, `Fax`, `Email`) VALUES (9000, N'Callahan', N'Laura', N'IT Staff', 6, '2000/11/27', '2004/3/4', N'923 7 ST NW', N'Lethbridge', N'AB', N'Canada', N'T1H 1Y8', N'+1 (403) 467-3351', N'+1 (403) 467-8772', N'laura@chinookcorp.com');
+INSERT INTO `Employee` (`EmployeeId`, `LastName`, `FirstName`, `Title`, `ReportsTo`, `BirthDate`, `HireDate`, `Address`, `City`, `State`, `Country`, `PostalCode`, `Phone`, `Fax`, `Email`) VALUES (9000, N'Callahan', N'Laura', N'IT Staff', 6, '2001/11/29', '2004/3/4', N'923 7 ST NW', N'Lethbridge', N'AB', N'Canada', N'T1H 1Y8', N'+1 (403) 467-3351', N'+1 (403) 467-8772', N'laura@chinookcorp.com');
 SELECT * FROM Employee WHERE EmployeeId = 9000;
 DELETE FROM Employee WHERE EmployeeId = 9000;
 
 /*******************************************************************************
    3. Implementar procedimentos armazenados (stored procedures) que garantam a validação das regras semânticas criadas
-   TODO: tentei fazer uma stored procedure pra ser chamada por min_tempo_pago_insert e min_tempo_pago_delete mas não funcionou
 ********************************************************************************/
+USE chinook;
+CREATE USER 'rubinho'@'localhost' IDENTIFIED BY 'vrum';
 
-DROP PROCEDURE IF EXISTS  min_tempo_pago_prc;
+DROP PROCEDURE IF EXISTS desc_genero;
 
 DELIMITER $$
-
-CREATE PROCEDURE min_tempo_pago_prc(tempo INT, preco NUMERIC(10,2))
+CREATE PROCEDURE desc_genero(IN genero_nome VARCHAR(120))
 BEGIN
-	IF tempo < 30000 THEN
-		SET preco = 0;
-	END IF;
+	DECLARE genero_id int;
+    DECLARE track_id int;
+    DECLARE i int;
+    SET i=0;
+	SELECT GenreId FROM Genre WHERE genero_nome=genre.name INTO genero_id;
+    loop_desconto:
+    LOOP
+		SELECT TrackId FROM Track WHERE genero_id=GenreId ORDER BY RAND() LIMIT 1 INTO track_id;
+        select Name, UnitPrice from track where TrackId=track_id;
+        UPDATE Track SET UnitPrice = UnitPrice*0.9 WHERE TrackId=track_id;
+        select name, UnitPrice from track where TrackId=track_id;
+        SET i = i+1;
+        IF i=3 THEN
+			LEAVE loop_desconto;
+		END IF;
+    END LOOP;
 END$$
 DELIMITER ;
+
+CALL desc_genero('metal');
+
+GRANT EXECUTE ON PROCEDURE mydb.myproc TO 'rubinho'@'somehost';

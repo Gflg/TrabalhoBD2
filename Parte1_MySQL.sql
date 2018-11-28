@@ -154,11 +154,12 @@ BEGIN
 	DECLARE tipo_chave VARCHAR(150);
 	DECLARE anterior VARCHAR(150);
 	DECLARE chaveprimaria VARCHAR(150);
+    	DECLARE tamanhoChar INT;
     
-	DECLARE registro CURSOR FOR 
-		SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_KEY
-		FROM INFORMATION_SCHEMA.COLUMNS
-		WHERE TABLE_SCHEMA = 'chinook';
+    	DECLARE registro CURSOR FOR 
+        	SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_KEY, CHARACTER_MAXIMUM_LENGTH
+        	FROM INFORMATION_SCHEMA.COLUMNS
+        	WHERE TABLE_SCHEMA = 'chinook';
 	
 	DECLARE CONTINUE handler 
 	  FOR NOT found 
@@ -188,8 +189,8 @@ BEGIN
 			END IF;
 			SET @createTable = CONCAT(@createTable, coluna, " ", tipo);
 			IF tipo LIKE "VARCHAR" THEN
-				SET @createTable = CONCAT(@createTable, "(150)");
-			END IF;
+            			SET @createTable = CONCAT(@createTable, "(", tam, ")");
+        		END IF;
 			IF obrigatorio LIKE "YES" THEN
 				SET @createTable = CONCAT(@createTable, " NOT NULL");
 			END IF;

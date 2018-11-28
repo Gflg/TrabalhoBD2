@@ -1,42 +1,5 @@
-/***************************
-PARA AUXILIO
-****************************/
-
--- lista todos os índices não únicos
-SET @tableName:= 'track';
-SELECT table_name AS `Table`,
-       index_name AS `Index`,
-       GROUP_CONCAT(column_name ORDER BY seq_in_index) AS `Columns`
-FROM information_schema.statistics
-WHERE NON_UNIQUE = 1 AND table_schema = 'chinook' AND table_name = @tableName
-GROUP BY 1,2;
-
-
--- add all non-unique indexes , WITHOUT index length spec
-SET @tableName:= 'track';
-SET SESSION group_concat_max_len=10240;
-SELECT CONCAT('ALTER TABLE ', `Table`, ' ADD INDEX ', GROUP_CONCAT(CONCAT(`Index`, '(', `Columns`, ')') SEPARATOR ',\n ADD INDEX ') )
-FROM (
-SELECT table_name AS `Table`,
-       index_name AS `Index`,
-        GROUP_CONCAT(column_name ORDER BY seq_in_index) AS `Columns`
-FROM information_schema.statistics
-WHERE NON_UNIQUE = 1 AND table_schema = 'chinook' AND table_name = @tableName
-GROUP BY `Table`, `Index`) AS tmp
-GROUP BY `Table`;
-
-ALTER TABLE album ADD INDEX IFK_AlbumArtistId(ArtistId);
 
 USE chinook;
-
-/* Para uso da questão 4 */
-CREATE DATABASE dev;
-USE dev;
-DROP DATABASE dev;
-
-SELECT TABLE_NAME, INDEX_NAME, COLUMN_NAME
-FROM INFORMATION_SCHEMA.STATISTICS
-WHERE TABLE_SCHEMA = 'dev';
 
 /*******************************************************************************
    1. Consulta as tabelas de catálogo e lista todos os índices existentes acompanhados
@@ -48,8 +11,7 @@ FROM INFORMATION_SCHEMA.STATISTICS
 WHERE TABLE_SCHEMA = 'chinook';
 
 /*******************************************************************************
-   2. TODO 
-   Criar um procedimento que remova todos os índices (NAO UNICOS) de uma tabela
+   2. Cria um procedimento que remova todos os índices (permitidos) de uma tabela
    informada como parâmetro
 ********************************************************************************/
 
@@ -115,34 +77,28 @@ CREATE PROCEDURE index_del(IN tableName VARCHAR(150))
 
 DELIMITER 
     
-
-
+-- Para chamar função
+CALL index_del('NOME DA TABELA');
 
 /*******************************************************************************
-   3. Consulta as tabelas de catálogo e lista todas as chaves estrangeiras existentes
+   3. Consulta as tabelas de catálogo para listar todas as chaves estrangeiras existentes
    informando tabelas e colunas relacionadas
 ********************************************************************************/
-SELECT 
-  TABLE_NAME,COLUMN_NAME,CONSTRAINT_NAME, REFERENCED_TABLE_NAME,REFERENCED_COLUMN_NAME
-FROM
-  INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-WHERE
-  REFERENCED_TABLE_SCHEMA = 'chinook';
+SELECT TABLE_NAME,COLUMN_NAME,CONSTRAINT_NAME, REFERENCED_TABLE_NAME,REFERENCED_COLUMN_NAME
+	FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+	WHERE REFERENCED_TABLE_SCHEMA = 'chinook';
 
 /*******************************************************************************
-   4. Falta só a chave estrangeira.
-   TODO: descobrir como recuperar ações em cima de FK
-   TODO: descobrir tam dos varchar
+   4. Constrói de  forma dinâmica a partir do catálogo os comandos create  table das  tabelas existentes
+   no esquema exemplo considerando pelo  menos as  informações sobre
+   colunas (nome, tipo e obrigatoriedade) e chaves primárias e estrangeiras.
 ********************************************************************************/
-DROP DATABASE IF EXISTS dev;
-CREATE DATABASE dev;
-USE dev;
 
-DROP PROCEDURE IF EXISTS parent_reg;
+DROP PROCEDURE IF EXISTS recreate_tables;
 
 DELIMITER $$
 
-CREATE PROCEDURE parent_reg()
+CREATE PROCEDURE recreate_tables()
 
 BEGIN
 	DECLARE fim INT DEFAULT false;
@@ -154,12 +110,12 @@ BEGIN
 	DECLARE tipo_chave VARCHAR(150);
 	DECLARE anterior VARCHAR(150);
 	DECLARE chaveprimaria VARCHAR(150);
-    	DECLARE tamanhoChar INT;
+	DECLARE tam INT;
     
-    	DECLARE registro CURSOR FOR 
-        	SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_KEY, CHARACTER_MAXIMUM_LENGTH
-        	FROM INFORMATION_SCHEMA.COLUMNS
-        	WHERE TABLE_SCHEMA = 'chinook';
+	DECLARE registro CURSOR FOR 
+		SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_KEY, CHARACTER_MAXIMUM_LENGTH
+		FROM INFORMATION_SCHEMA.COLUMNS
+		WHERE TABLE_SCHEMA = 'chinook';
 	
 	DECLARE CONTINUE handler 
 	  FOR NOT found 
@@ -172,7 +128,7 @@ BEGIN
   open registro; 
 	READ_LOOP:
 		LOOP
-			FETCH registro INTO tableName,coluna,tipo,obrigatorio,tipo_chave;
+			FETCH registro INTO tableName,coluna,tipo,obrigatorio,tipo_chave, tam;
 			SET tableName = CONCAT(tableName," ");
 			IF tableName <> anterior AND anterior NOT LIKE "vazio" THEN
 				SET @createTable = CONCAT(@createTable, ", ", chaveprimaria, "))");
@@ -233,7 +189,6 @@ BLOCK2: BEGIN
             IF fim2 THEN 
             LEAVE FK_LOOP; 
             end IF;
-            -- SET fkTable = CONCAT(fkTable,123);
             SET @alterTable = CONCAT(@alterTable,"`", fkTable,"` ADD CONSTRAINT `",fkConstraintName,"`");
             SET @alterTable = CONCAT(@alterTable, " FOREIGN KEY (`", fkColumn,"`) REFERENCES `",fkReferencedTable,"` (`");
             SET @alterTable = CONCAT(@alterTable, fkReferencedColumn,"`) ");
@@ -258,7 +213,7 @@ BLOCK2: BEGIN
 END BLOCK2;
 END$$
 
-
 DELIMITER ;
 
-CALL parent_reg();
+-- Para chamar função
+CALL recreate_tables();

@@ -180,26 +180,30 @@ BLOCK2: BEGIN
 	  
 	open registroFK;
     FK_LOOP:
-		LOOP
-			FETCH registroFK INTO fkTable,fkColumn,fkConstraintName,fkReferencedTable,fkReferencedColumn;
+        LOOP
+            FETCH registroFK INTO fkTable,fkColumn,fkConstraintName,fkReferencedTable,fkReferencedColumn;
             IF fim2 THEN 
-			LEAVE FK_LOOP; 
-			end IF;
-			-- SET fkTable = CONCAT(fkTable,123);
+            LEAVE FK_LOOP; 
+            end IF;
+            -- SET fkTable = CONCAT(fkTable,123);
             SET @alterTable = CONCAT(@alterTable,"`", fkTable,"` ADD CONSTRAINT `",fkConstraintName,"`");
             SET @alterTable = CONCAT(@alterTable, " FOREIGN KEY (`", fkColumn,"`) REFERENCES `",fkReferencedTable,"` (`");
             SET @alterTable = CONCAT(@alterTable, fkReferencedColumn,"`) ");
             SET @alterTable = CONCAT(@alterTable, "ON DELETE NO ACTION ON UPDATE NO ACTION;\n");
-            -- SET @createIndex = CONCAT(@createIndex, "`I",fkConstraintName,"` ON `", fkTable,"` (`",fkColumn,"`);");
-           -- SET @alterTable = CONCAT(@alterTable, @createIndex);
             PREPARE createStmt FROM @alterTable;
-				EXECUTE createStmt;
-				DEALLOCATE PREPARE createStmt;
-				SET @alterTable = "ALTER TABLE ";
-				SET @createIndex = "CREATE INDEX ";
-			
-		END LOOP;
-	close registroFK;
+            EXECUTE createStmt;
+            DEALLOCATE PREPARE createStmt;
+            SET @alterTable = "ALTER TABLE ";
+            
+            SET @createIndex = CONCAT(@createIndex, " `I",fkConstraintName,"` ON `", fkTable,"` (",fkColumn,");");
+            PREPARE createStmt FROM @createIndex;
+            EXECUTE createStmt;
+            DEALLOCATE PREPARE createStmt;
+            SET @createIndex = "CREATE INDEX ";
+            
+            
+        END LOOP;
+    close registroFK;
     
 	SELECT table_name FROM information_schema.tables where table_schema='dev';
 	

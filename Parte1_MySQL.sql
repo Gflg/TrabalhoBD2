@@ -53,21 +53,68 @@ WHERE TABLE_SCHEMA = 'chinook';
    informada como parâmetro
 ********************************************************************************/
 
-SET @tableName:= 'track';
-SET SESSION group_concat_max_len=10240;
+DROP PROCEDURE IF EXISTS index_del;
 
-SELECT CONCAT('ALTER TABLE ', `Table`, ' DROP INDEX ', GROUP_CONCAT(`Index` SEPARATOR ', DROP INDEX '),';' )
-FROM (
-SELECT TABLE_NAME AS `Table`,
-       INDEX_NAME AS `Index`
-FROM INFORMATION_SCHEMA.STATISTICS
-WHERE NON_UNIQUE = 1 AND TABLE_SCHEMA = 'chinook' AND TABLE_NAME = @tableName
-GROUP BY `Table`, `Index`) AS tmp
-GROUP BY `Table`;
--- Vai gerar um registro com o comando que tem que ser executado
--- PORÉM as tabelas possuem chaves primárias e estrangeiras e
--- nao dá pra excluir por causa disso
+DELIMITER $$
 
+CREATE PROCEDURE index_del(IN tableName VARCHAR(150))
+/* 
+	O procedimento remove todos os indices que não trabalham em colunas referenciadas de outras tabelas (chaves estrangeiras) que não poderiam
+	ser deletados sem alteração das outras tabelas em si. 
+ 
+	Para que fosse possível remover todos os indices, seria necessário verificar todas as tabelas que referenciam a tabela passada por parametro,
+    e dentro dela remover as chaves estrangeiras, e para remover estas, seria necessário acessar todas as outras tabelas que referenciam esta,
+    repetindo o processo recursivamente (eventualmente removendo todas as tabelas no caso do Chinook). Por isso deixamos removendo apenas indices
+    que não agem sobre chaves referenciadas. Essa é uma restrição do MYSQL e talvez o procedimento seja mais simples em outros SGBDs.
+    
+    Ainda assim, no caso do Chinook, não há indices que não fazem referencias a outras tabelas, então o procedimento executa sem alterar nenhuma tabela.
+ */
+
+	BEGIN
+		DECLARE fimIndex INT DEFAULT FALSE; 
+        DECLARE v_index_name VARCHAR(150);
+        DECLARE v_table_name VARCHAR(150);
+        DECLARE v_column_name VARCHAR(150);
+        DECLARE is_referenced INT;
+        
+        
+		DECLARE registroIndex CURSOR FOR  -- retorna todos os indices da tabela
+			SELECT TABLE_NAME, INDEX_NAME, COLUMN_NAME
+			FROM INFORMATION_SCHEMA.STATISTICS
+			WHERE TABLE_SCHEMA = 'dev' AND TABLE_NAME = tableName;
+			
+		
+		DECLARE CONTINUE handler 
+			FOR NOT found 
+				SET fimIndex = TRUE;
+		
+		OPEN registroIndex;
+		DROP_INDEX_LOOP:
+			LOOP
+				FETCH registroIndex INTO v_table_name, v_index_name, v_column_name;
+				
+				IF fimIndex THEN
+					LEAVE DROP_INDEX_LOOP;
+				END IF;
+				SELECT COUNT(*) 
+					FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+					WHERE REFERENCED_TABLE_SCHEMA = 'dev' and REFERENCED_COLUMN_NAME = v_column_name INTO is_referenced; -- verifica se a coluna pertence a chave estrangeira ou não
+                    
+				IF v_index_name NOT LIKE 'IFK%' AND is_referenced = 0 THEN
+					
+					SET @dropIndex = CONCAT("ALTER TABLE ", v_table_name, " DROP INDEX `", v_index_name,"`;");
+					
+					PREPARE dropStmt FROM @dropIndex;
+					EXECUTE dropStmt;
+					DEALLOCATE PREPARE dropStmt;
+				END IF;
+			END LOOP;
+		CLOSE registroIndex;
+
+	END $$
+
+DELIMITER 
+    
 
 
 

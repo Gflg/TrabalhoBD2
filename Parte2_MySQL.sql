@@ -83,32 +83,53 @@ DELETE FROM Employee WHERE EmployeeId = 9000;
    3. Implementar procedimentos armazenados (stored procedures) que garantam a validação das regras semânticas criadas
 ********************************************************************************/
 USE chinook;
-CREATE USER 'rubinho'@'localhost' IDENTIFIED BY 'vrum';
 
-DROP PROCEDURE IF EXISTS desc_genero;
+DROP PROCEDURE IF EXISTS criar_atualizar_playlist_genero;
 
 DELIMITER $$
-CREATE PROCEDURE desc_genero(IN genero_nome VARCHAR(120))
+CREATE PROCEDURE criar_atualizar_playlist_genero(IN nome_playlist VARCHAR(120), IN genero_nome VARCHAR(120))
 BEGIN
-	DECLARE genero_id int;
+    DECLARE genero_id int;
     DECLARE track_id int;
     DECLARE i int;
-    SET i=0;
+    DECLARE playlist_id int;
+    
+    SELECT PlaylistId FROM Playlist WHERE NAME=nome_playlist INTO playlist_id;
+    IF playlist_id IS NULL THEN
+		SELECT MAX(PlaylistId) FROM Playlist INTO playlist_id;
+        SET playlist_id = playlist_id + 1;
+		INSERT INTO Playlist (PlaylistId, Name) VALUES (playlist_id, nome_playlist);
+    END IF;
 	SELECT GenreId FROM Genre WHERE genero_nome=genre.name INTO genero_id;
-    loop_desconto:
+    SET i=0;
+    adicao_track:
     LOOP
 		SELECT TrackId FROM Track WHERE genero_id=GenreId ORDER BY RAND() LIMIT 1 INTO track_id;
-        select Name, UnitPrice from track where TrackId=track_id;
-        UPDATE Track SET UnitPrice = UnitPrice*0.9 WHERE TrackId=track_id;
-        select name, UnitPrice from track where TrackId=track_id;
+        IF ( EXISTS (SELECT * FROM PlaylistTrack WHERE PlaylistId = playlist_id AND TrackId = track_id)) THEN
+			SELECT TrackId FROM Track WHERE genero_id=GenreId ORDER BY RAND() LIMIT 1 INTO track_id;
+            ITERATE adicao_track;
+        END IF;
+        INSERT INTO PlaylistTrack (PlaylistId, TrackId) VALUES (playlist_id, track_id);
         SET i = i+1;
         IF i=3 THEN
-			LEAVE loop_desconto;
+			LEAVE adicao_track;
 		END IF;
     END LOOP;
+    
 END$$
+
 DELIMITER ;
 
-CALL desc_genero('metal');
+CREATE USER 'corsair'@'localhost' IDENTIFIED BY 'senha';
 
-GRANT EXECUTE ON PROCEDURE mydb.myproc TO 'rubinho'@'somehost';
+GRANT SELECT ON chinook.PlaylistTrack TO 'corsair'@'localhost';
+GRANT SELECT ON chinook.Playlist TO 'corsair'@'localhost';
+GRANT SELECT ON chinook.Track TO 'corsair'@'localhost';
+GRANT SELECT ON chinook.Genre TO 'corsair'@'localhost';
+
+GRANT EXECUTE ON PROCEDURE chinook.criar_atualizar_playlist_genero TO 'corsair'@'localhost';
+
+-- Estas últimas linhas servem para auxilio. Copiar e usar ao se conectar como o user
+USE chinook;
+CALL criar_atualizar_playlist_genero('Minha Playlist', 'Metal');
+SELECT * FROM PlaylistTrack NATURAL JOIN Playlist WHERE Playlist.Name='Minha Playlist';

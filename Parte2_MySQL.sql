@@ -1,4 +1,4 @@
-USE dev;
+USE chinook;
 
 /*******************************************************************************
    2. Implementar triggers que garantam a validação das regras semânticas criadas
@@ -38,11 +38,12 @@ DELETE FROM Track WHERE TrackId = 9000;
 
 -- Regra de que todo funcionário deve ser maior de idade
 
-DROP TRIGGER IF EXISTS func_maior_idade;
+DROP TRIGGER IF EXISTS func_maior_idade_insert;
+DROP TRIGGER IF EXISTS func_maior_idade_update;
 
 DELIMITER $$
 
-CREATE TRIGGER func_maior_idade
+CREATE TRIGGER func_maior_idade_insert
 BEFORE INSERT ON employee
 FOR EACH ROW
 BEGIN
@@ -50,25 +51,74 @@ BEGIN
     DECLARE mesNasc INT;
     DECLARE diaNasc INT;
     
-    DECLARE anoAtual INT;
-    DECLARE mesAtual INT;
-    DECLARE diaAtual INT;
+    DECLARE anoContratacao INT;
+    DECLARE mesContratacao INT;
+    DECLARE diaContratacao INT;
+    
+    -- De acordo com o DDL do Chinook este campo pode ser nulo. Resolvemos não mudar a definição do banco, porém sem BirthDate não tem como prosseguir
+    IF NEW.BirthDate IS NULL THEN
+		SIGNAL SQLSTATE 'ERR0R' SET MESSAGE_TEXT = 'Informe data de nascimento. Funcionário não pode ter menos de 18 anos';
+	END IF;
     
     SET anoNasc = CAST(EXTRACT(YEAR FROM NEW.BirthDate) AS UNSIGNED);
     SET mesNasc = CAST(EXTRACT(MONTH FROM NEW.BirthDate) AS UNSIGNED);
     SET diaNasc = CAST(EXTRACT(DAY FROM NEW.BirthDate) AS UNSIGNED);
     
-    SET anoAtual = CAST(EXTRACT(YEAR FROM CURDATE()) AS UNSIGNED);
-    SET mesAtual = CAST(EXTRACT(MONTH FROM CURDATE()) AS UNSIGNED);
-    SET diaAtual = CAST(EXTRACT(DAY FROM CURDATE()) AS UNSIGNED);
+    IF NEW.HireDate IS NULL THEN
+		SET NEW.HireDate = CURDATE();
+    END IF;
     
-    IF anoAtual - anoNasc < 18 THEN
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Funcionário não pode ter menos de 18 anos';
-    ELSEIF anoAtual - anoNasc = 18 THEN
-		IF mesAtual < mesNasc THEN
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Funcionário não pode ter menos de 18 anos';
-		ELSEIF mesAtual = mesNasc AND diaAtual < diaNasc THEN
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Funcionário não pode ter menos de 18 anos';
+    SET anoContratacao = CAST(EXTRACT(YEAR FROM NEW.HireDate) AS UNSIGNED);
+    SET mesContratacao = CAST(EXTRACT(MONTH FROM NEW.HireDate) AS UNSIGNED);
+    SET diaContratacao = CAST(EXTRACT(DAY FROM NEW.HireDate) AS UNSIGNED);
+    
+    IF anoContratacao - anoNasc < 18 THEN
+		SIGNAL SQLSTATE 'ERR0R' SET MESSAGE_TEXT = 'Funcionário não pode ter menos de 18 anos';
+    ELSEIF anoContratacao - anoNasc = 18 THEN
+		IF mesContratacao < mesNasc THEN
+			SIGNAL SQLSTATE 'ERR0R' SET MESSAGE_TEXT = 'Funcionário não pode ter menos de 18 anos';
+		ELSEIF mesContratacao = mesNasc AND diaContratacao < diaNasc THEN
+			SIGNAL SQLSTATE 'ERR0R' SET MESSAGE_TEXT = 'Funcionário não pode ter menos de 18 anos';
+        END IF;
+	END IF;
+END$$
+
+CREATE TRIGGER func_maior_idade_update
+BEFORE INSERT ON employee
+FOR EACH ROW
+BEGIN
+	DECLARE anoNasc INT;
+    DECLARE mesNasc INT;
+    DECLARE diaNasc INT;
+    
+    DECLARE anoContratacao INT;
+    DECLARE mesContratacao INT;
+    DECLARE diaContratacao INT;
+    
+    -- De acordo com o DDL do Chinook este campo pode ser nulo. Resolvemos não mudar a definição do banco, porém sem BirthDate não tem como prosseguir
+    IF NEW.BirthDate IS NULL THEN
+		SIGNAL SQLSTATE 'ERR0R' SET MESSAGE_TEXT = 'Informe data de nascimento. Funcionário não pode ter menos de 18 anos';
+	END IF;
+    
+    SET anoNasc = CAST(EXTRACT(YEAR FROM NEW.BirthDate) AS UNSIGNED);
+    SET mesNasc = CAST(EXTRACT(MONTH FROM NEW.BirthDate) AS UNSIGNED);
+    SET diaNasc = CAST(EXTRACT(DAY FROM NEW.BirthDate) AS UNSIGNED);
+    
+    IF NEW.HireDate IS NULL THEN
+		SET NEW.HireDate = CURDATE();
+    END IF;
+    
+    SET anoContratacao = CAST(EXTRACT(YEAR FROM NEW.HireDate) AS UNSIGNED);
+    SET mesContratacao = CAST(EXTRACT(MONTH FROM NEW.HireDate) AS UNSIGNED);
+    SET diaContratacao = CAST(EXTRACT(DAY FROM NEW.HireDate) AS UNSIGNED);
+    
+    IF anoContratacao - anoNasc < 18 THEN
+		SIGNAL SQLSTATE 'ERR0R' SET MESSAGE_TEXT = 'Funcionário não pode ter menos de 18 anos';
+    ELSEIF anoContratacao - anoNasc = 18 THEN
+		IF mesContratacao < mesNasc THEN
+			SIGNAL SQLSTATE 'ERR0R' SET MESSAGE_TEXT = 'Funcionário não pode ter menos de 18 anos';
+		ELSEIF mesContratacao = mesNasc AND diaContratacao < diaNasc THEN
+			SIGNAL SQLSTATE 'ERR0R' SET MESSAGE_TEXT = 'Funcionário não pode ter menos de 18 anos';
         END IF;
 	END IF;
 END$$
@@ -84,7 +134,7 @@ DELETE FROM Employee WHERE EmployeeId = 9000;
 ********************************************************************************/
 USE chinook;
 
-DROP PROCEDURE IF EXISTS criar_atualizar_playlist_genero;
+DROP PROCEDURE IF EXISTS criar_Contratacaoizar_playlist_genero;
 
 DELIMITER $$
 CREATE PROCEDURE criar_atualizar_playlist_genero(IN nome_playlist VARCHAR(120), IN genero_nome VARCHAR(120))
